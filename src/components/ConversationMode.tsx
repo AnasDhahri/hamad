@@ -73,7 +73,7 @@ export default function ConversationMode() {
       className="h-screen bg-background transition-colors flex flex-col items-center px-2 py-1 relative"
     >
       {/* Theme Toggle Button */}
-      <div className="absolute top-1 right-1 z-[1000]">
+      <div className="absolute top-1 right-1 z-[2000]">
         <ThemeToggle />
       </div>
 
