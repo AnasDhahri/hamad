@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: 255, 59, 132;
+    --primary-dark: 230, 36, 109;
+    --secondary: 255, 113, 164;
+    --accent: 255, 183, 211;
+    --background: 255, 255, 255;
+    --surface: 243, 244, 246;
+    --text-primary: 17, 24, 39;
+    --text-secondary: 75, 85, 99;
+  }
+
+  .dark {
+    --background: 10, 10, 10;
+    --surface: 26, 26, 26;
+    --text-primary: 255, 255, 255;
+    --text-secondary: 209, 213, 219;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[rgb(var(--background))] text-[rgb(var(--text-primary))] transition-colors duration-300;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-3 rounded-full font-medium transition-all duration-200 flex items-center gap-2;
+  }
+
+  .btn-primary {
+    @apply bg-[rgb(var(--primary))] hover:bg-[rgb(var(--primary-dark))] text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-surface/60 hover:bg-surface/80 text-text-primary border border-white/5 backdrop-blur-sm;
+  }
+
+  .glass-panel {
+    @apply bg-surface/40 backdrop-blur-md border border-white/5 rounded-2xl shadow-lg;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[rgb(var(--primary))] via-[rgb(var(--secondary))] to-[rgb(var(--accent))];
+  }
+}
+
+@layer utilities {
+  .bg-surface\/60 {
+    background-color: rgb(var(--surface) / 0.6);
+  }
+
+  .bg-surface\/80 {
+    background-color: rgb(var(--surface) / 0.8);
+  }
+
+  .bg-surface\/40 {
+    background-color: rgb(var(--surface) / 0.4);
+  }
+}
