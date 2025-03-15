@@ -267,7 +267,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-[100px] h-[100px] rounded-full overflow-hidden">
             <img
-              src="/HMC-Logo.webp"
+              src="public/HMC-Logo.webp"
               alt="Hamad Medical Logo"
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 isSessionActive ? 'opacity-30' : 'opacity-60'
