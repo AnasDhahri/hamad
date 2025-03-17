@@ -21,7 +21,7 @@ export class AudioConfigService {
           sampleRate: 16000
         }
       });
-      
+
       return speechsdk.AudioConfig.fromStreamInput(this.audioStream);
     } catch (error: any) {
       if (error.name === 'NotAllowedError') {
@@ -35,15 +35,14 @@ export class AudioConfigService {
 
   static createSpeakerConfig(): speechsdk.AudioConfig {
     try {
-      if (this.selectedOutputDeviceId && this.selectedOutputDeviceId !== 'default') {
-        return speechsdk.AudioConfig.fromSpeakerOutput(this.selectedOutputDeviceId);
-      }
       return speechsdk.AudioConfig.fromDefaultSpeakerOutput();
     } catch (error) {
       console.warn('Failed to create speaker config, using default:', error);
       return speechsdk.AudioConfig.fromDefaultSpeakerOutput();
     }
   }
+  
+  
 
   static async cleanup(): Promise<void> {
     if (this.audioStream) {
