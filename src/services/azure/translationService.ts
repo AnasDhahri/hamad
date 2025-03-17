@@ -10,6 +10,22 @@ function shortCode(fullLang: string): string {
   return fullLang.split('-')[0];
 }
 
+function normalizeLanguageCode(shortLang: string, fullLang: string): string {
+  const langMap: Record<string, string> = {
+    'en': 'en-US',
+    'es': 'es-ES',
+    'fr': 'fr-FR',
+    'de': 'de-DE',
+    'it': 'it-IT',
+    'pt': 'pt-PT',
+    'zh': 'zh-CN',
+    'ja': 'ja-JP',
+    'ko': 'ko-KR',
+    'ar': 'ar-SA'
+  };
+  return langMap[shortLang] || fullLang;
+}
+
 export class TranslationService {
   private translator: speechsdk.TranslationRecognizer | null = null;
 
@@ -86,7 +102,8 @@ export class TranslationService {
               if (translation) {
                 console.log(`[TRANSLATE] Speaker 1 → Speaker 2: ${translation}`);
                 onSpeaker2Translation(translation);
-                await speakTTS(translation, speaker2Lang);
+                const normalizedSpeaker2Lang = normalizeLanguageCode(shortSpeaker2, speaker2Lang);
+                await speakTTS(translation, normalizedSpeaker2Lang);
               }
             }
           } else if (shortDetected === shortSpeaker2) {
@@ -95,7 +112,8 @@ export class TranslationService {
               if (translation) {
                 console.log(`[TRANSLATE] Speaker 2 → Speaker 1: ${translation}`);
                 onSpeaker1Translation(translation);
-                await speakTTS(translation, speaker1LangRef.current!);
+                const normalizedSpeaker1Lang = normalizeLanguageCode(shortSpeaker1Locked, speaker1LangRef.current!);
+                await speakTTS(translation, normalizedSpeaker1Lang);
               }
             }
           }

@@ -6,7 +6,6 @@ import { useTranslation } from '../hooks/useTranslation';
 import LanguageSelector from './LanguageSelector';
 import ThemeToggle from './ThemeToggle';
 import { Redo } from 'lucide-react';
-import { SpeechSynthesisService } from '../services/speechSynthesisService';
 
 export default function ConversationMode() {
   const [originalTranscript, setOriginalTranscript] = useState('');
@@ -16,9 +15,8 @@ export default function ConversationMode() {
   const [speaker2Lang, setSpeaker2Lang] = useState('en-US');
   const [speaker2Translation, setSpeaker2Translation] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const { isSpeaking } = useSpeechSynthesis();
+  const { speak, isSpeaking } = useSpeechSynthesis(); // Removed error
   const { isTranslating, startTranslation, stopTranslation } = useTranslation();
-  // 🔹 FIX: Explicitly initialize Speech Synthesis on mobile
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -32,15 +30,10 @@ export default function ConversationMode() {
     }
   }, []);
 
-  // 🔹 FIX: Ensure speakTTS is a proper Promise function
   const speakTTS = useCallback(async (text: string, lang: string) => {
-    return new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      utterance.onend = () => resolve();
-      window.speechSynthesis.speak(utterance);
-    });
-  }, []);
+    console.log(`speakTTS called with text: "${text}", lang: "${lang}"`);
+    await speak(text, lang); // Use the hook's speak function
+  }, [speak]);
 
   const handleLockSpeaker1 = useCallback((lang: string) => {
     speaker1LangRef.current = lang;
@@ -71,7 +64,7 @@ export default function ConversationMode() {
       (text) => setSpeaker2Translation(text),
       speakTTS
     );
-  }, [isTranslating, stopTranslation, startTranslation, speaker2Lang, handleLockSpeaker1]);
+  }, [isTranslating, stopTranslation, startTranslation, speaker2Lang, handleLockSpeaker1, speakTTS]);
 
   const handleSpeaker2Change = (lang: string) => {
     setSpeaker2Lang(lang);
