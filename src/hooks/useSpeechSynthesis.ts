@@ -4,6 +4,10 @@ import { SpeechSynthesisService } from '../services/azure/speechSynthesis';
 export function useSpeechSynthesis() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPreloaded, setIsPreloaded] = useState(false);
+
+  // Detect if device is iOS
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   // Load voices when available
   useEffect(() => {
@@ -14,18 +18,18 @@ export function useSpeechSynthesis() {
     }
   }, []);
 
-  // Function to preload TTS before playing
-  const preloadTTS = (text: string, language: string, onReady: () => void) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language;
+  // ✅ **Fix: Preload without actually speaking**
+  const preloadTTS = (language: string) => {
+    if (isPreloaded) return; // Prevent multiple preloads
 
-    // Detect when preloading is complete
+    const utterance = new SpeechSynthesisUtterance(" ");
+    utterance.lang = language;
+    
     utterance.onend = () => {
-      console.log("TTS Preloaded, now ready to play...");
-      onReady();
+      console.log("TTS Preloaded and ready.");
+      setIsPreloaded(true);
     };
 
-    // Fake-play to force preloading
     speechSynthesis.speak(utterance);
   };
 
@@ -35,21 +39,23 @@ export function useSpeechSynthesis() {
       return;
     }
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
     try {
       setIsSpeaking(true);
       setError(null);
 
-      if (isMobile && 'speechSynthesis' in window) {
-        console.log('Using native SpeechSynthesis on mobile for:', { text, language });
+      if (!isIOS && 'speechSynthesis' in window) {
+        // ✅ **Android / PC**: Use system TTS
+        console.log('Using native SpeechSynthesis:', { text, language });
 
-        preloadTTS(text, language, () => {
+        preloadTTS(language); // ✅ Preload first, without speaking
+
+        setTimeout(() => {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = language;
           utterance.volume = 1.0;
           utterance.rate = 0.9; // Slightly slow down on mobile to prevent stuttering
 
+          // Pick the best voice
           const voices = window.speechSynthesis.getVoices();
           console.log('Available voices:', voices.map(v => ({ name: v.name, lang: v.lang })));
 
@@ -69,11 +75,13 @@ export function useSpeechSynthesis() {
             console.error('Native TTS error:', event.error);
             setIsSpeaking(false);
           };
-          
+
           window.speechSynthesis.speak(utterance);
-        });
+        }, 200); // ✅ Small delay ensures preload completes
+
       } else {
-        console.log('Using Azure SpeechSynthesis on PC/mobile fallback:', { text, language });
+        // ✅ **iOS**: Always use Azure Speech Synthesis
+        console.log('Using Azure SpeechSynthesis on iOS:', { text, language });
         const speechService = new SpeechSynthesisService();
         await speechService.synthesizeSpeech(text, language);
       }
@@ -81,7 +89,7 @@ export function useSpeechSynthesis() {
       console.error('Speech synthesis failed:', err);
       setError(err.message || 'Unknown error during speech synthesis');
     } finally {
-      if (!isMobile || !('speechSynthesis' in window)) {
+      if (!('speechSynthesis' in window) || isIOS) {
         setIsSpeaking(false);
       }
     }
