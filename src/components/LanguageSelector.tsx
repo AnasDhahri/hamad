@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { languages } from '../utils/languageData';
 import { ChevronDown } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext'; // Import ThemeContext
 
 interface LanguageSelectorProps {
   value: string;
@@ -13,6 +14,7 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectedLanguage = languages.find(lang => lang.code === value);
+  const { theme } = useTheme(); // Access theme from context
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -29,6 +31,8 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  const dropdownBackground = theme === 'light' ? 'bg-gray-200' : 'bg-blue-900';
 
   return (
     <div className="flex flex-col relative" ref={dropdownRef}>
@@ -53,7 +57,7 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-blue-900 backdrop-blur-md border border-white/5 rounded-lg shadow-lg overflow-hidden z-50 ">
+        <div className={`absolute bottom-full left-0 right-0 mb-1 ${dropdownBackground} backdrop-blur-md border border-white/5 rounded-lg shadow-lg overflow-hidden z-50 `}>
           {languages.map((lang) => (
             <button
               key={lang.code}

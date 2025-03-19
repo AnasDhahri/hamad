@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --primary: 255, 59, 132;
+    --primary: 0, 0, 128;
     --primary-dark: 230, 36, 109;
     --secondary: 255, 113, 164;
     --accent: 255, 183, 211;

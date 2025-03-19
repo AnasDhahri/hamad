@@ -246,7 +246,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
   return (
     <motion.div 
-      className="relative cursor-pointer group z-10"
+      className="relative cursor-pointer group pointer-events-auto"
+      style={{ zIndex: 1 }}  // Explicitly set the z-index inline to ensure it's applied
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onToggleListening}

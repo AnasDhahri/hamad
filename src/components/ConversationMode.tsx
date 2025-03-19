@@ -5,18 +5,21 @@ import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { useTranslation } from '../hooks/useTranslation';
 import LanguageSelector from './LanguageSelector';
 import ThemeToggle from './ThemeToggle';
-import { Redo } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ConversationMode() {
-  const [originalTranscript, setOriginalTranscript] = useState('');
   const speaker1LangRef = useRef<string | null>(null);
   const [speaker1LangState, setSpeaker1LangState] = useState<string>('no-select');
   const [speaker1Translation, setSpeaker1Translation] = useState('');
   const [speaker2Lang, setSpeaker2Lang] = useState('en-US');
   const [speaker2Translation, setSpeaker2Translation] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const { speak, isSpeaking } = useSpeechSynthesis(); // Removed error
+  const { speak, isSpeaking } = useSpeechSynthesis();
   const { isTranslating, startTranslation, stopTranslation } = useTranslation();
+  const { theme } = useTheme();
+
+  // Determine background color based on theme
+  const textBackground = theme === 'light' ? 'bg-gray-200' : 'bg-gray-700';
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -32,7 +35,7 @@ export default function ConversationMode() {
 
   const speakTTS = useCallback(async (text: string, lang: string) => {
     console.log(`speakTTS called with text: "${text}", lang: "${lang}"`);
-    await speak(text, lang); // Use the hook's speak function
+    await speak(text, lang);
   }, [speak]);
 
   const handleLockSpeaker1 = useCallback((lang: string) => {
@@ -49,7 +52,6 @@ export default function ConversationMode() {
     }
 
     setIsSessionActive(true);
-    setOriginalTranscript('');
     speaker1LangRef.current = null;
     setSpeaker1LangState('no-select');
     setSpeaker1Translation('');
@@ -59,7 +61,7 @@ export default function ConversationMode() {
       speaker2Lang,
       speaker1LangRef,
       handleLockSpeaker1,
-      (interimText) => setOriginalTranscript(interimText),
+      () => {}, // No interim callback needed
       (text) => setSpeaker1Translation(text),
       (text) => setSpeaker2Translation(text),
       speakTTS
@@ -76,48 +78,47 @@ export default function ConversationMode() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md flex flex-col h-[calc(100vh-2rem)]">
-        <div className="flex flex-col items-center rotate-180 h-1/2 z-[1000]">
-          <div className="glass-panel p-1 w-full text-center h-1/2 flex flex-col justify-center">
-            <h3 className="font-semibold text-xs">Original</h3>
-            <p className="text-[10px] text-text-secondary overflow-y-auto">
-              {originalTranscript || 'Waiting for speech...'}
-            </p>
-          </div>
-          <div className="glass-panel p-1 w-full flex flex-col items-center h-1/2 relative z-[1000]">
-            <h3 className="font-semibold text-xs">Speaker 1</h3>
-            <LanguageSelector label="" value={speaker1LangState} onChange={() => {}} disabled={true} />
-            <p className="text-[10px] text-text-secondary text-center mt-1 overflow-y-auto">
-              {speaker1Translation || 'Translation will appear here...'}
-            </p>
-            <button className="mt-1 text-text-secondary flex items-center gap-1 text-[10px]">
-              <Redo className="w-2 h-2" />
-              Replay
-            </button>
+      <div className="w-full max-w-md flex flex-col h-[calc(100vh-2rem)] relative">
+        {/* Speaker 1 at the top, inverted */}
+        <div className="flex flex-col items-center rotate-180 mt-2 z-[1500] relative pointer-events-auto">
+          <div className="w-full flex flex-col items-center justify-end relative">
+            {/* Translated text in its own glass-panel at the bottom (top after inversion) */}
+            <div className={`glass-panel p-1 w-full flex flex-col items-center ${textBackground} mb-2 h-48`}>
+              <p className="text-[14px] text-text-secondary text-center mt-0 overflow-y-auto">
+                {speaker1Translation || 'Translation will appear here...'}
+              </p>
+            </div>
+            {/* LanguageSelector without box */}
+            <div className="w-full flex justify-center relative">
+              <LanguageSelector label="" value={speaker1LangState} onChange={() => {}} disabled={true} />
+            </div>
           </div>
         </div>
 
-        <div className="relative flex flex-col justify-center items-center h-24 py-2 z-10">
-          <AudioVisualizer isListening={isTranslating} isSpeaking={isSpeaking} isTranslationMode={isSessionActive && !isSpeaking} onToggleListening={handleToggleSession} isSessionActive={isSessionActive} />
+        {/* Microphone positioned with lower z-index */}
+        <div className="flex flex-col items-center justify-center absolute inset-0 z-[1]">
+          <AudioVisualizer
+            isListening={isTranslating}
+            isSpeaking={isSpeaking}
+            isTranslationMode={isSessionActive && !isSpeaking}
+            onToggleListening={handleToggleSession}
+            isSessionActive={isSessionActive}
+          />
         </div>
 
-        <div className="flex flex-col items-center h-1/2 z-[1000]">
-          <div className="glass-panel p-1 w-full text-center h-1/2 flex flex-col justify-center">
-            <h3 className="font-semibold text-xs">Original</h3>
-            <p className="text-[10px] text-text-secondary overflow-y-auto">
-              {originalTranscript || 'Waiting for speech...'}
-            </p>
-          </div>
-          <div className="glass-panel p-1 w-full flex flex-col items-center h-1/2 relative z-[1000]">
-            <h3 className="font-semibold text-xs">Speaker 2</h3>
-            <LanguageSelector label="" value={speaker2Lang} onChange={handleSpeaker2Change} />
-            <p className="text-[10px] text-text-secondary text-center mt-1 overflow-y-auto">
-              {speaker2Translation || 'Translation will appear here...'}
-            </p>
-            <button className="mt-1 text-text-secondary flex items-center gap-1 text-[10px]">
-              <Redo className="w-2 h-2" />
-              Replay
-            </button>
+        {/* Speaker 2 at the bottom with higher z-index */}
+        <div className="flex flex-col items-center mb-0 mt-auto z-[1500] relative pointer-events-auto">
+          <div className="w-full flex flex-col items-center justify-start relative">
+            {/* Translated text in its own glass-panel at the top */}
+            <div className={`glass-panel p-1 w-full flex flex-col items-center ${textBackground} mb-2 h-52`}>
+              <p className="text-[14px] text-text-secondary text-center mt-0 overflow-y-auto">
+                {speaker2Translation || 'Translation will appear here...'}
+              </p>
+            </div>
+            {/* LanguageSelector without box */}
+            <div className="w-full flex justify-center relative">
+              <LanguageSelector label="" value={speaker2Lang} onChange={handleSpeaker2Change} />
+            </div>
           </div>
         </div>
       </div>
