@@ -1,10 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* src/index.css */
 
+/* Style the toast for Speaker 1 */
+.speaker1-toast {
+  background-color: #fff !important; /* White background */
+  color: #ff0000 !important; /* Red text */
+  border: 2px solid #ff0000 !important; /* Red outline */
+  padding: 16px 24px !important;
+  border-radius: 8px !important;
+  max-width: 500px !important;
+  text-align: center !important;
+  position: relative !important;
+  transform: rotate(180deg) !important; /* Rotate the entire toast 180 degrees */
+}
+
+/* Rotate the text back to be readable from the inverted perspective */
+.speaker1-toast .Toastify__toast-body {
+  transform: rotate(180deg) !important; /* Counter-rotate the text */
+}
+
+/* Remove the pointer since we're focusing on inversion via rotation */
+.speaker1-toast::before {
+  display: none !important;
+}
+
+/* Remove the slide animation since we're focusing on inversion */
+.speaker1-toast {
+  animation: none !important;
+}
+
+.speaker1-toast.exit {
+  animation: none !important;
+}
+
+/* Ensure the toast is at the very bottom */
+.Toastify__toast-container--bottom-center {
+  bottom: 10px !important; /* Adjust to place at the very bottom */
+}
 @layer base {
   :root {
-    --primary: 255, 59, 132;
+    --primary: 0, 0, 128;
     --primary-dark: 230, 36, 109;
     --secondary: 255, 113, 164;
     --accent: 255, 183, 211;

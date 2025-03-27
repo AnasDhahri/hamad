@@ -1,6 +1,7 @@
-// src/hooks/useTranslation.ts
 import { useState, useCallback, useEffect } from 'react';
 import { TranslationService } from '../services/azure/translationService';
+
+type OnQuotaExceededFn = () => void; // Define the type for the new callback
 
 export function useTranslation() {
   const [isTranslating, setIsTranslating] = useState(false);
@@ -15,7 +16,7 @@ export function useTranslation() {
     };
   }, []);
 
-  const startTranslation = useCallback(
+  const toggleTranslation = useCallback(
     async (
       speaker2Lang: string,
       speaker1LangRef: { current: string | null },
@@ -23,21 +24,23 @@ export function useTranslation() {
       onRecognized: (text: string) => void,
       onSpeaker1Translation: (t: string) => void,
       onSpeaker2Translation: (t: string) => void,
-      speakTTS: (text: string, lang: string) => Promise<void>
+      speakTTS: (text: string, lang: string) => Promise<void>,
+      onQuotaExceeded: OnQuotaExceededFn // Add the new parameter
     ) => {
       try {
         if (!translationService) throw new Error('Translation service not ready');
         setError(null);
-        await translationService.startTranslation(
+        await translationService.toggleMicrophone(
           speaker2Lang,
           speaker1LangRef,
           setSpeaker1Lang,
           onRecognized,
           onSpeaker1Translation,
           onSpeaker2Translation,
-          speakTTS
+          speakTTS,
+          onQuotaExceeded // Pass the new callback to TranslationService
         );
-        setIsTranslating(true);
+        setIsTranslating(translationService.isActive());
       } catch (err: any) {
         setError(err.message);
         setIsTranslating(false);
@@ -51,7 +54,9 @@ export function useTranslation() {
     if (!translationService) return;
     try {
       await translationService.stopTranslation();
-    } finally {
+      setIsTranslating(translationService.isActive());
+    } catch (err: any) {
+      console.error('Stop translation error:', err);
       setIsTranslating(false);
     }
   }, [translationService]);
@@ -59,7 +64,8 @@ export function useTranslation() {
   return {
     isTranslating,
     error,
-    startTranslation,
-    stopTranslation
+    startTranslation: toggleTranslation, // Alias for backward compatibility
+    stopTranslation,
+    toggleTranslation,
   };
 }

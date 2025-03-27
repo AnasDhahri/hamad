@@ -22,14 +22,22 @@ export class SpeechSynthesisService {
         AZURE_CONFIG.speechRegion
       );
 
-      const voiceConfig = getVoiceConfig(language);
+      // Set output format to MP3 for better browser compatibility
+      speechConfig.speechSynthesisOutputFormat = speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3;
+
+      // Normalize language code to match voiceMap
+      const normalizedLanguage = language.split('-')[0] === 'ar' ? 'ar-SA' :
+        language.split('-')[0] === 'zh' ? 'zh-CN' :
+          language;
+      const voiceConfig = getVoiceConfig(normalizedLanguage);
       speechConfig.speechSynthesisVoiceName = voiceConfig.name;
-      console.log('Using voice:', voiceConfig.name, 'for language:', language);
+      console.log('Using voice:', voiceConfig.name, 'for language:', normalizedLanguage);
 
       const audioConfig = AudioConfigService.createSpeakerConfig();
       console.log('Audio config created:', audioConfig);
 
       this.synthesizer = new speechsdk.SpeechSynthesizer(speechConfig, audioConfig);
+      console.log('Synthesizer initialized');
 
       return new Promise((resolve, reject) => {
         if (!this.synthesizer) {
@@ -42,27 +50,15 @@ export class SpeechSynthesisService {
           (result) => {
             if (result.reason === speechsdk.ResultReason.SynthesizingAudioCompleted) {
               console.log('Audio synthesis completed');
-
-              // ✅ Manually enforce correct voice selection on mobile
-              if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                const availableVoices = window.speechSynthesis.getVoices();
-                const matchingVoice = availableVoices.find(v => v.lang === language);
-              
-                if (matchingVoice) {
-                  const utterance = new SpeechSynthesisUtterance(text);
-                  utterance.voice = matchingVoice;
-                  utterance.lang = language;
-                  window.speechSynthesis.speak(utterance);
-                }
-              }
-
               resolve();
             } else {
+              console.error('Synthesis failed:', result.errorDetails);
               reject(new Error(`Synthesis failed: ${result.errorDetails}`));
             }
             this.cleanup();
           },
           (error) => {
+            console.error('Synthesis error:', error);
             reject(new Error(`Synthesis failed: ${error}`));
             this.cleanup();
           }
