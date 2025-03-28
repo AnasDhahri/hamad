@@ -36,6 +36,16 @@ export class TranslationService {
     validateAzureConfig();
   }
 
+  // Helper method to display the toast
+  private showNoLanguageDetectedToast(): void {
+    toast.error('No language detected, please try again', {
+      position: 'bottom-center',
+      toastId: 'language-match-error',
+      className: 'speaker1-toast',
+      autoClose: 3000,
+    });
+  }
+
   public async toggleMicrophone(
     speaker2Lang: string,
     speaker1LangRef: { current: string | null },
@@ -194,12 +204,7 @@ export class TranslationService {
           if (!speaker1LangRef.current && text && shortDetected === shortSpeaker2) {
             console.log('[INFO] Detected language matches Speaker 2’s language:', shortSpeaker2, { timestamp: new Date().toISOString() });
             // Display toast notification
-            toast.error('No language detected, please try again', {
-              position: 'bottom-center',
-              toastId: 'language-match-error',
-              className: 'speaker1-toast',
-              autoClose: 3000,
-            });
+            this.showNoLanguageDetectedToast();
             return; // Skip further processing
           }
 
@@ -214,6 +219,8 @@ export class TranslationService {
             console.log('[LOCK] Speaker 1’s language locked as:', detectedLang, { timestamp: new Date().toISOString() });
           } else if (!text) {
             console.log('[INFO] Skipping language lock: No speech detected (empty text)', { timestamp: new Date().toISOString() });
+            // Display toast notification for no speech detected
+            this.showNoLanguageDetectedToast();
             return; // Skip further processing if no speech was detected
           } else if (shortDetected === shortSpeaker2) {
             console.log('[INFO] Skipping language lock: Detected language matches Speaker 2’s language:', shortSpeaker2, { timestamp: new Date().toISOString() });

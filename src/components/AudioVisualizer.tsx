@@ -34,7 +34,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   const CIRCLE_RADIUS = 100;
   const TRANSITION_DURATION = 1500;
   const WAVE_TRANSITION_DURATION = 1000;
-  const DEFAULT_COLOR = '#7FA9D4'; // Same as LISTENING_COLOR for consistency
+  const DEFAULT_COLOR = '#7FA9D4';
   const LISTENING_COLOR = '#7FA9D4';
   const TRANSLATION_COLOR = '#3B82F6';
   const LOADING_COLOR = '#FFA500';
@@ -89,6 +89,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
           const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
           source.connect(analyserRef.current);
+          // Add a 500ms delay before setting isMicReady to true
+          await new Promise(resolve => setTimeout(resolve, 500));
           setIsMicReady(true);
         } catch (err) {
           console.error('Error accessing microphone:', err);
@@ -127,7 +129,6 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Use DEFAULT_COLOR when not listening, LOADING_COLOR when initializing, and LISTENING/TRANSLATION_COLOR when ready
     const targetColor = !isListening
       ? DEFAULT_COLOR
       : !isMicReady
