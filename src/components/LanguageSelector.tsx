@@ -1,7 +1,8 @@
+// LanguageSelector.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { languages } from '../utils/languageData';
 import { ChevronDown } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext'; // Import ThemeContext
+import { useTheme } from '../context/ThemeContext';
 
 interface LanguageSelectorProps {
   value: string;
@@ -14,7 +15,7 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectedLanguage = languages.find(lang => lang.code === value);
-  const { theme } = useTheme(); // Access theme from context
+  const { theme } = useTheme();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,8 +36,9 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
   const dropdownBackground = theme === 'light' ? 'bg-gray-200' : 'bg-blue-900';
 
   return (
-    <div className="flex flex-col relative" ref={dropdownRef}>
+    <div className="flex flex-col relative z-[9999]" ref={dropdownRef}>
       {label && <label className="text-sm text-text-secondary mb-1">{label}</label>}
+
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -45,7 +47,7 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
       >
         <span>{selectedLanguage?.name || 'Select a language'}</span>
         <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-        {selectedLanguage && selectedLanguage.flag && selectedLanguage.flag !== 'un' && (
+        {selectedLanguage?.flag && (
           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <img
               src={`https://flagcdn.com/24x18/${selectedLanguage.flag}.png`}
@@ -57,7 +59,7 @@ export default function LanguageSelector({ value, onChange, label, disabled = fa
       </button>
 
       {isOpen && !disabled && (
-        <div className={`absolute bottom-full left-0 right-0 mb-1 ${dropdownBackground} backdrop-blur-md border border-white/5 rounded-lg shadow-lg overflow-hidden z-50 `}>
+        <div className={`absolute bottom-full left-0 right-0 mb-1 ${dropdownBackground} backdrop-blur-md border border-white/5 rounded-lg shadow-lg overflow-hidden z-[9999]`}>
           {languages.map((lang) => (
             <button
               key={lang.code}
