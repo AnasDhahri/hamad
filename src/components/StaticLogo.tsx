@@ -1,8 +1,9 @@
 import React from 'react';
 
+// StaticLogo.tsx
 const StaticLogo: React.FC = () => {
   return (
-    <div className="w-[90px] h-[90px] rounded-full overflow-hidden mb-2">
+    <div className="w-[100px] h-[100px] rounded-full overflow-hidden z-0">
       <img
         src="/HMC-Logo.webp"
         alt="Hamad Medical Logo"
