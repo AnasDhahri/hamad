@@ -115,7 +115,7 @@ export default function ConversationMode() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-screen bg-background transition-colors flex flex-col items-center px-2 py-2 relative overflow-visible"
+      className="min-h-screen bg-background transition-colors flex flex-col items-center px-2 py-2 relative"
     >
       {/* theme toggle in top right */}
       <div className="absolute top-2 right-2 z-[2000]">
@@ -127,7 +127,7 @@ export default function ConversationMode() {
 
         {/* speaker 1 (flipped view) */}
         <div className="flex flex-col items-center gap-3 rotate-180 relative z-[9999]">
-          <div className={`glass-panel w-full p-2 h-36 ${textBackground}`}>
+          <div className={`glass-panel w-full p-2 h-44 ${textBackground}`}>
             <p className="text-[14px] text-text-secondary text-center overflow-y-auto">
               {speaker1Translation || 'Translation will appear here...'}
             </p>
@@ -149,13 +149,13 @@ export default function ConversationMode() {
         </div>
 
         {/* centered static logo */}
-        <div className="flex items-center justify-center py-6 z-0">
+        <div className="flex items-center justify-center py-3 z-0">
           <StaticLogo />
         </div>
 
         {/* speaker 2 (normal view) */}
         <div className="flex flex-col items-center gap-3">
-          <div className={`glass-panel w-full p-2 h-36 ${textBackground}`}>
+          <div className={`glass-panel w-full p-2 h-44 ${textBackground}`}>
             <p className="text-[14px] text-text-secondary text-center overflow-y-auto">
               {speaker2Translation || 'Translation will appear here...'}
             </p>
