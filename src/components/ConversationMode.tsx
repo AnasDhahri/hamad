@@ -1,3 +1,4 @@
+// ConversationMode.tsx
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
@@ -11,21 +12,20 @@ import StaticLogo from './StaticLogo';
 
 export default function ConversationMode() {
   const speaker1LangRef = useRef<string | null>(null);
-  const [speaker1Lang, setSpeaker1Lang] = useState<string>('ar-SA'); // Default to Arabic
+  const [speaker1Lang, setSpeaker1Lang] = useState<string>('ar-SA');
   const [speaker1Translation, setSpeaker1Translation] = useState('');
   const [speaker2Lang, setSpeaker2Lang] = useState('en-US');
   const [speaker2Translation, setSpeaker2Translation] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [speaker1MicActive, setSpeaker1MicActive] = useState(false);
   const [speaker2MicActive, setSpeaker2MicActive] = useState(false);
-  const { speak, isSpeaking } = useSpeechSynthesis();
-  const { isTranslating, startTranslation, stopTranslation } = useTranslation(); // Ensure this matches
+  const { speak } = useSpeechSynthesis();
+  const { isTranslating, startTranslation, stopTranslation } = useTranslation();
   const { theme } = useTheme();
 
   const textBackground = theme === 'light' ? 'bg-gray-200' : 'bg-gray-700';
 
   const showQuotaExceededToast = useCallback(() => {
-    console.log('Showing quota exceeded toast');
     toast.error('Quota exceeded. Please check your Azure Speech Service subscription or try again later.', {
       position: 'top-right',
       autoClose: 5000,
@@ -53,7 +53,6 @@ export default function ConversationMode() {
   }, [speaker1Lang]);
 
   const speakTTS = useCallback(async (text: string, lang: string) => {
-    console.log(`speakTTS called with text: "${text}", lang: "${lang}"`);
     await speak(text, lang);
   }, [speak]);
 
@@ -116,76 +115,63 @@ export default function ConversationMode() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-screen bg-background transition-colors flex flex-col items-center px-2 py-1 relative"
+      className="h-screen bg-background transition-colors flex flex-col items-center px-2 py-2 relative overflow-visible"
     >
-      <div className="absolute top-1 right-1 z-[2000]">
+      {/* theme toggle in top right */}
+      <div className="absolute top-2 right-2 z-[2000]">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md flex flex-col h-[calc(100vh-2rem)] relative">
-        {/* Speaker 1 at the top, not inverted */}
-        <div className="flex flex-col items-center mt-4 z-[1500] relative pointer-events-auto transform rotate-180">
-          <div className="w-full flex flex-col items-center justify-start relative">
-            {/* Text Area */}
-            <div className={`glass-panel p-1 w-full flex flex-col items-center ${textBackground} mb-4 h-36`} dir="auto">
-              <p className="text-[14px] text-text-secondary text-center mt-0 overflow-y-auto">
-                {speaker1Translation || 'Translation will appear here...'}
-              </p>
-            </div>
-            {/* Dropdown */}
-            <div className="w-full flex justify-center relative mb-4 z-[1600]">
-              <LanguageSelector
-                label=""
-                value={speaker1Lang}
-                onChange={handleSpeaker1Change}
-                disabled={isSessionActive}
-              />
-            </div>
-            {/* Mic Button */}
-            <div className="mb-4">
-              <MicButton
-                isActive={speaker1MicActive}
-                isDisabled={speaker2MicActive}
-                onStart={handleStartSpeaker1Mic}
-                onStop={handleStopSpeaker1Mic}
-              />
-            </div>
+      {/* main layout container */}
+      <div className="w-full max-w-md flex flex-col justify-between h-full relative z-[10] py-2">
+
+        {/* speaker 1 (flipped view) */}
+        <div className="flex flex-col items-center gap-3 rotate-180 relative z-[9999]">
+          <div className={`glass-panel w-full p-2 h-36 ${textBackground}`}>
+            <p className="text-[14px] text-text-secondary text-center overflow-y-auto">
+              {speaker1Translation || 'Translation will appear here...'}
+            </p>
           </div>
+          <div>
+            <LanguageSelector
+              label=""
+              value={speaker1Lang}
+              onChange={handleSpeaker1Change}
+              disabled={isSessionActive}
+            />
+          </div>
+          <MicButton
+            isActive={speaker1MicActive}
+            isDisabled={speaker2MicActive}
+            onStart={handleStartSpeaker1Mic}
+            onStop={handleStopSpeaker1Mic}
+          />
         </div>
 
-        {/* Static Logo in the middle with increased spacing */}
-        <div className="flex flex-col items-center justify-center absolute inset-0 z-[1] py-24 min-h-[160px]">
+        {/* centered static logo */}
+        <div className="flex items-center justify-center py-6 z-0">
           <StaticLogo />
         </div>
 
-        {/* Speaker 2 at the bottom, not inverted */}
-        <div className="flex flex-col items-center mb-0 mt-auto z-[1500] relative pointer-events-auto">
-          <div className="w-full flex flex-col items-center justify-start relative">
-            {/* Text Area */}
-            <div className={`glass-panel p-1 w-full flex flex-col items-center ${textBackground} mt-2 h-36`} dir="auto">
-              <p className="text-[14px] text-text-secondary text-center mt-0 overflow-y-auto">
-                {speaker2Translation || 'Translation will appear here...'}
-              </p>
-            </div>
-            {/* Dropdown */}
-            <div className="w-full flex justify-center relative mb-4 z-[1600]">
-              <LanguageSelector
-                label=""
-                value={speaker2Lang}
-                onChange={handleSpeaker2Change}
-                disabled={isSessionActive}
-              />
-            </div>
-            {/* Mic Button */}
-            <div className="mb-4">
-              <MicButton
-                isActive={speaker2MicActive}
-                isDisabled={speaker1MicActive}
-                onStart={handleStartSpeaker2Mic}
-                onStop={handleStopSpeaker2Mic}
-              />
-            </div>
+        {/* speaker 2 (normal view) */}
+        <div className="flex flex-col items-center gap-3">
+          <div className={`glass-panel w-full p-2 h-36 ${textBackground}`}>
+            <p className="text-[14px] text-text-secondary text-center overflow-y-auto">
+              {speaker2Translation || 'Translation will appear here...'}
+            </p>
           </div>
+          <LanguageSelector
+            label=""
+            value={speaker2Lang}
+            onChange={handleSpeaker2Change}
+            disabled={isSessionActive}
+          />
+          <MicButton
+            isActive={speaker2MicActive}
+            isDisabled={speaker1MicActive}
+            onStart={handleStartSpeaker2Mic}
+            onStop={handleStopSpeaker2Mic}
+          />
         </div>
       </div>
     </motion.div>
