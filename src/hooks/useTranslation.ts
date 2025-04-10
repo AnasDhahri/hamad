@@ -1,36 +1,32 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { TranslationService } from '../services/azure/translationService';
 
-type OnQuotaExceededFn = () => void; // Define the type for the new callback
+type OnRecognizedFn = (text: string) => void;
+type OnSpeakerTranslationFn = (translation: string) => void;
+type OnLockSpeaker1LangFn = (lang: string) => void;
+type SpeakTTSFn = (text: string, lang: string) => Promise<void>;
+type OnQuotaExceededFn = () => void;
 
-export function useTranslation() {
+export const useTranslation = () => {
   const [isTranslating, setIsTranslating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [translationService, setTranslationService] = useState<TranslationService | null>(null);
+  const translationServiceRef = useRef(new TranslationService());
 
-  useEffect(() => {
-    const svc = new TranslationService();
-    setTranslationService(svc);
-    return () => {
-      svc.stopTranslation().catch(() => {});
-    };
-  }, []);
-
-  const toggleTranslation = useCallback(
+  const startTranslation = useCallback(
     async (
+      speaker: 'speaker1' | 'speaker2',
       speaker2Lang: string,
       speaker1LangRef: { current: string | null },
-      setSpeaker1Lang: (lang: string) => void,
-      onRecognized: (text: string) => void,
-      onSpeaker1Translation: (t: string) => void,
-      onSpeaker2Translation: (t: string) => void,
-      speakTTS: (text: string, lang: string) => Promise<void>,
-      onQuotaExceeded: OnQuotaExceededFn // Add the new parameter
+      setSpeaker1Lang: OnLockSpeaker1LangFn,
+      onRecognized: OnRecognizedFn,
+      onSpeaker1Translation: OnSpeakerTranslationFn,
+      onSpeaker2Translation: OnSpeakerTranslationFn,
+      speakTTS: SpeakTTSFn,
+      onQuotaExceeded: OnQuotaExceededFn
     ) => {
-      try {
-        if (!translationService) throw new Error('Translation service not ready');
-        setError(null);
-        await translationService.toggleMicrophone(
+      if (!isTranslating) {
+        setIsTranslating(true);
+        await translationServiceRef.current.toggleMicrophone(
+          speaker,
           speaker2Lang,
           speaker1LangRef,
           setSpeaker1Lang,
@@ -38,34 +34,19 @@ export function useTranslation() {
           onSpeaker1Translation,
           onSpeaker2Translation,
           speakTTS,
-          onQuotaExceeded // Pass the new callback to TranslationService
+          onQuotaExceeded
         );
-        setIsTranslating(translationService.isActive());
-      } catch (err: any) {
-        setError(err.message);
-        setIsTranslating(false);
-        console.error('Translation error:', err);
       }
     },
-    [translationService]
+    [isTranslating]
   );
 
   const stopTranslation = useCallback(async () => {
-    if (!translationService) return;
-    try {
-      await translationService.stopTranslation();
-      setIsTranslating(translationService.isActive());
-    } catch (err: any) {
-      console.error('Stop translation error:', err);
+    if (isTranslating) {
+      await translationServiceRef.current.stopTranslation();
       setIsTranslating(false);
     }
-  }, [translationService]);
+  }, [isTranslating]);
 
-  return {
-    isTranslating,
-    error,
-    startTranslation: toggleTranslation, // Alias for backward compatibility
-    stopTranslation,
-    toggleTranslation,
-  };
-}
+  return { isTranslating, startTranslation, stopTranslation };
+};

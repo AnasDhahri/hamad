@@ -8,7 +8,11 @@ type OnLockSpeaker1LangFn = (lang: string) => void;
 type SpeakTTSFn = (text: string, lang: string) => Promise<void>;
 type OnQuotaExceededFn = () => void;
 
-function shortCode(fullLang: string): string {
+function shortCode(fullLang: string | undefined): string {
+  if (!fullLang || typeof fullLang !== 'string') {
+    console.warn(`[WARN] Invalid language code in shortCode: ${fullLang}`, { timestamp: new Date().toISOString() });
+    return '';
+  }
   return fullLang.split('-')[0];
 }
 
@@ -31,12 +35,13 @@ function normalizeLanguageCode(shortLang: string, fullLang: string): string {
 export class TranslationService {
   private translator: speechsdk.TranslationRecognizer | null = null;
   private isSessionActive: boolean = false;
+  private currentSpeaker: 'speaker1' | 'speaker2' | null = null;
+  private recognitionLanguage: string | null = null;
 
   constructor() {
     validateAzureConfig();
   }
 
-  // Helper method to display the toast
   private showNoLanguageDetectedToast(): void {
     toast.error('No language detected, please try again', {
       position: 'bottom-center',
@@ -46,7 +51,17 @@ export class TranslationService {
     });
   }
 
+  private showLanguageMismatchToast(): void {
+    toast.error('Please speak in your selected language', {
+      position: 'bottom-center',
+      toastId: 'language-mismatch-error',
+      className: 'speaker1-toast',
+      autoClose: 3000,
+    });
+  }
+
   public async toggleMicrophone(
+    speaker: 'speaker1' | 'speaker2',
     speaker2Lang: string,
     speaker1LangRef: { current: string | null },
     setSpeaker1Lang: OnLockSpeaker1LangFn,
@@ -60,20 +75,26 @@ export class TranslationService {
       await this.stopTranslation();
       this.isSessionActive = false;
       console.log('[SESSION] Session stopped:', { timestamp: new Date().toISOString() });
-    } else {
-      await this.startTranslation(
-        speaker2Lang,
-        speaker1LangRef,
-        setSpeaker1Lang,
-        onRecognized,
-        onSpeaker1Translation,
-        onSpeaker2Translation,
-        speakTTS,
-        onQuotaExceeded
-      );
-      this.isSessionActive = true;
-      console.log('[SESSION] Session started:', { timestamp: new Date().toISOString() });
     }
+    this.currentSpeaker = speaker;
+    console.log('[DEBUG] Before starting translation:', {
+      currentSpeaker: this.currentSpeaker,
+      speaker1Lang: speaker1LangRef.current,
+      speaker2Lang: speaker2Lang,
+      timestamp: new Date().toISOString()
+    });
+    await this.startTranslation(
+      speaker2Lang,
+      speaker1LangRef,
+      setSpeaker1Lang,
+      onRecognized,
+      onSpeaker1Translation,
+      onSpeaker2Translation,
+      speakTTS,
+      onQuotaExceeded
+    );
+    this.isSessionActive = true;
+    console.log('[SESSION] Session started for', speaker, { timestamp: new Date().toISOString() });
   }
 
   public async startTranslation(
@@ -98,28 +119,36 @@ export class TranslationService {
       speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '10000');
       speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '3000');
 
-      speechConfig.speechRecognitionLanguage = 'en-US';
-      speechConfig.setProperty('SpeechServiceConnection_LanguageIdMode', 'Continuous');
+      // Enable automatic language detection with only 4 languages
+      const autoDetectLanguages = ['en-US', 'ar-SA', 'es-ES', 'fr-FR'];
       speechConfig.setProperty(
-        'SpeechServiceConnection_AutoDetectSourceLanguages',
-        'en-US,es-ES,fr-FR,de-DE,it-IT,pt-PT,zh-CN,ja-JP,ko-KR,ar-SA'
+        speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguages,
+        autoDetectLanguages.join(',')
       );
 
+      const speaker1Lang = speaker1LangRef.current;
+      if (!speaker1Lang) {
+        throw new Error('Speaker 1 language not selected');
+      }
+      speechConfig.speechRecognitionLanguage = this.currentSpeaker === 'speaker1' ? speaker1Lang : speaker2Lang;
+      this.recognitionLanguage = speechConfig.speechRecognitionLanguage;
+
       const supportedTargetLanguages = [
-        'en', 'es', 'fr', 'de', 'it', 'pt', 'zh-Hans', 'ja', 'ko', 'ar'
+        'en-US', 'es-ES', 'fr-FR', 'de-DE', 'it-IT', 'pt-PT', 'zh-Hans', 'ja-JP', 'ko-KR', 'ar-SA'
       ];
       supportedTargetLanguages.forEach(lang => {
-        speechConfig.addTargetLanguage(lang);
+        speechConfig.addTargetLanguage(shortCode(lang));
       });
 
       const shortSpeaker2 = shortCode(speaker2Lang);
-      if (!supportedTargetLanguages.includes(shortSpeaker2)) {
+      const fullSpeaker2 = normalizeLanguageCode(shortSpeaker2, speaker2Lang);
+      if (!supportedTargetLanguages.includes(fullSpeaker2)) {
         speechConfig.addTargetLanguage(shortSpeaker2);
       }
 
       console.log('[INFO] Speech Config:', {
         speechRecognitionLanguage: speechConfig.speechRecognitionLanguage,
-        autoDetectSourceLanguages: speechConfig.getProperty('SpeechServiceConnection_AutoDetectSourceLanguages'),
+        autoDetectSourceLanguages: speechConfig.getProperty(speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguages),
         targetLanguages: speechConfig.targetLanguages,
         noiseSuppression: speechConfig.getProperty('SpeechServiceConnection_NoiseSuppression'),
         echoCancellation: speechConfig.getProperty('SpeechServiceConnection_EchoCancellation'),
@@ -133,6 +162,9 @@ export class TranslationService {
 
       this.translator = new speechsdk.TranslationRecognizer(speechConfig, audioConfig);
       console.log('[INFO] Translator Initialized', { timestamp: new Date().toISOString() });
+
+      // Capture the current speaker at the time of starting translation
+      const speakerAtStart = this.currentSpeaker;
 
       this.translator.sessionStarted = (_, event) => {
         console.log('[SESSION] Started:', {
@@ -167,6 +199,7 @@ export class TranslationService {
             reason: event.result.reason,
             duration: event.result.duration / 10000,
             offset: event.result.offset / 10000,
+            detectedLanguage: event.result.properties?.getProperty(speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult),
             timestamp: new Date().toISOString()
           });
           onRecognized(event.result.text);
@@ -175,6 +208,7 @@ export class TranslationService {
             reason: event.result.reason,
             duration: event.result.duration / 10000,
             offset: event.result.offset / 10000,
+            detectedLanguage: event.result.properties?.getProperty(speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult),
             timestamp: new Date().toISOString()
           });
         }
@@ -183,66 +217,82 @@ export class TranslationService {
       this.translator.recognized = async (_, event) => {
         console.log('[RECOGNIZED] Event reason:', event.result.reason, { timestamp: new Date().toISOString() });
         if (event.result.reason === speechsdk.ResultReason.TranslatedSpeech) {
-          const detectedLang = event.result.language;
+          let detectedLang = event.result.language;
+          const autoDetectedLang = event.result.properties?.getProperty(
+            speechsdk.PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult
+          );
+          if (autoDetectedLang) {
+            detectedLang = autoDetectedLang;
+            console.log('[INFO] Auto-detected language:', detectedLang, { timestamp: new Date().toISOString() });
+          } else if (!detectedLang) {
+            console.warn('[WARN] Detected language is undefined, falling back to recognition language:', this.recognitionLanguage, { timestamp: new Date().toISOString() });
+            detectedLang = this.recognitionLanguage || (speakerAtStart === 'speaker1' ? speaker1LangRef.current : speaker2Lang) || 'en-US';
+          }
+
           const text = event.result.text;
           const duration = event.result.duration / 10000;
-          console.log('[INFO] Auto-detected Language:', detectedLang, {
+
+          console.log('[INFO] Recognized Language:', detectedLang, {
             text: text,
             duration: duration,
             wordCount: text ? text.split(/\s+/).length : 0,
-            translations: event.result.translations.languages.map(lang => ({
-              lang: lang,
-              text: event.result.translations.get(lang)
+            translations: Array.from(event.result.translations).map(([lang, text]) => ({
+              lang,
+              text
             })),
             timestamp: new Date().toISOString()
           });
 
           const shortDetected = shortCode(detectedLang);
+          const shortSpeaker1 = shortCode(speaker1LangRef.current!);
           const shortSpeaker2 = shortCode(speaker2Lang);
 
-          // Check if the detected language matches Speaker 2's language
-          if (!speaker1LangRef.current && text && shortDetected === shortSpeaker2) {
-            console.log('[INFO] Detected language matches Speaker 2’s language:', shortSpeaker2, { timestamp: new Date().toISOString() });
-            // Display toast notification
-            this.showNoLanguageDetectedToast();
-            return; // Skip further processing
-          }
+          console.log('[DEBUG] Language Values:', {
+            detectedLang: detectedLang,
+            shortDetected: shortDetected,
+            speaker1Lang: speaker1LangRef.current,
+            shortSpeaker1: shortSpeaker1,
+            speaker2Lang: speaker2Lang,
+            shortSpeaker2: shortSpeaker2,
+            currentSpeaker: speakerAtStart,
+            timestamp: new Date().toISOString()
+          });
 
-          // Only lock Speaker 1's language if:
-          // 1. The detected text is not empty (i.e., actual speech was detected)
-          // 2. The detected language is different from Speaker 2's preselected language
-          let justLocked = false;
-          if (!speaker1LangRef.current && text && shortDetected !== shortSpeaker2) {
-            speaker1LangRef.current = detectedLang;
-            setSpeaker1Lang(detectedLang);
-            justLocked = true;
-            console.log('[LOCK] Speaker 1’s language locked as:', detectedLang, { timestamp: new Date().toISOString() });
-          } else if (!text) {
-            console.log('[INFO] Skipping language lock: No speech detected (empty text)', { timestamp: new Date().toISOString() });
-            // Display toast notification for no speech detected
-            this.showNoLanguageDetectedToast();
-            return; // Skip further processing if no speech was detected
-          } else if (shortDetected === shortSpeaker2) {
-            console.log('[INFO] Skipping language lock: Detected language matches Speaker 2’s language:', shortSpeaker2, { timestamp: new Date().toISOString() });
-          }
-
-          // Compute shortSpeaker1Locked after locking to ensure we have the updated value
-          const shortSpeaker1Locked = speaker1LangRef.current ? shortCode(speaker1LangRef.current) : null;
-
-          // If the detected language doesn't match the locked language for Speaker 1 (and isn't Speaker 2's language), prompt the user to repeat
-          if (shortSpeaker1Locked && shortDetected !== shortSpeaker1Locked && shortDetected !== shortSpeaker2) {
-            console.log('[INFO] Detected language does not match Speaker 1’s locked language:', {
+          const expectedLang = speakerAtStart === 'speaker1' ? shortSpeaker1 : shortSpeaker2;
+          if (text && shortDetected && shortDetected !== expectedLang) {
+            console.log('[INFO] Detected language does not match selected language:', {
               detectedLang: shortDetected,
-              speaker1Lang: shortSpeaker1Locked,
+              expectedLang: expectedLang,
               timestamp: new Date().toISOString()
             });
-            onRecognized('Detected language does not match your previously detected language. Please repeat your phrase.');
+            this.showLanguageMismatchToast();
             return;
           }
 
-          // Translation logic
-          if ((justLocked || (shortSpeaker1Locked && shortDetected === shortSpeaker1Locked)) && shortDetected !== shortSpeaker2) {
+          if (speakerAtStart === 'speaker1' && text && shortDetected && shortDetected === shortSpeaker2) {
+            console.log('[INFO] Detected language matches Speaker 2’s language:', shortSpeaker2, { timestamp: new Date().toISOString() });
+            this.showNoLanguageDetectedToast();
+            return;
+          } else if (speakerAtStart === 'speaker2' && text && shortDetected && shortDetected === shortSpeaker1) {
+            console.log('[INFO] Detected language matches Speaker 1’s language:', shortSpeaker1, { timestamp: new Date().toISOString() });
+            this.showNoLanguageDetectedToast();
+            return;
+          }
+
+          if (!text) {
+            console.log('[INFO] Skipping processing: No speech detected (empty text)', { timestamp: new Date().toISOString() });
+            this.showNoLanguageDetectedToast();
+            return;
+          }
+
+          if (speakerAtStart === 'speaker1' && shortDetected === shortSpeaker1 && shortDetected !== shortSpeaker2) {
             const translation = event.result.translations.get(shortSpeaker2);
+            console.log('[DEBUG] Translation for Speaker 2:', {
+              targetLang: shortSpeaker2,
+              translation: translation,
+              availableTranslations: Array.from(event.result.translations),
+              timestamp: new Date().toISOString()
+            });
             if (translation) {
               console.log(`[TRANSLATE] Speaker 1 → Speaker 2: ${translation}`, { timestamp: new Date().toISOString() });
               onSpeaker2Translation(translation);
@@ -251,21 +301,28 @@ export class TranslationService {
             } else {
               console.log('[TRANSLATE] No translation available for Speaker 2 language:', shortSpeaker2, { timestamp: new Date().toISOString() });
             }
-          } else if (shortDetected === shortSpeaker2 && shortSpeaker1Locked && shortSpeaker2 !== shortSpeaker1Locked) {
-            const translation = event.result.translations.get(shortSpeaker1Locked);
+          } else if (speakerAtStart === 'speaker2' && shortDetected === shortSpeaker2 && shortSpeaker2 !== shortSpeaker1) {
+            const translation = event.result.translations.get(shortSpeaker1);
+            console.log('[DEBUG] Translation for Speaker 1:', {
+              targetLang: shortSpeaker1,
+              translation: translation,
+              availableTranslations: Array.from(event.result.translations),
+              timestamp: new Date().toISOString()
+            });
             if (translation) {
               console.log(`[TRANSLATE] Speaker 2 → Speaker 1: ${translation}`, { timestamp: new Date().toISOString() });
               onSpeaker1Translation(translation);
-              const normalizedSpeaker1Lang = normalizeLanguageCode(shortSpeaker1Locked, speaker1LangRef.current!);
+              const normalizedSpeaker1Lang = normalizeLanguageCode(shortSpeaker1, speaker1LangRef.current!);
               await speakTTS(translation, normalizedSpeaker1Lang);
             } else {
-              console.log('[TRANSLATE] No translation available for Speaker 1 language:', shortSpeaker1Locked, { timestamp: new Date().toISOString() });
+              console.log('[TRANSLATE] No translation available for Speaker 1 language:', shortSpeaker1, { timestamp: new Date().toISOString() });
             }
           } else {
             console.log('[TRANSLATE] Skipped: No translation needed or language mismatch:', {
               detectedLang: shortDetected,
-              speaker1Lang: shortSpeaker1Locked,
+              speaker1Lang: shortSpeaker1,
               speaker2Lang: shortSpeaker2,
+              currentSpeaker: speakerAtStart,
               timestamp: new Date().toISOString()
             });
           }
@@ -294,6 +351,8 @@ export class TranslationService {
       await this.translator.stopContinuousRecognitionAsync();
       console.log('[INFO] Stopped translation.', { timestamp: new Date().toISOString() });
       this.cleanup();
+      this.isSessionActive = false;
+      this.currentSpeaker = null;
     }
   }
 
