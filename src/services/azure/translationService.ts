@@ -2,6 +2,7 @@ import * as speechsdk from 'microsoft-cognitiveservices-speech-sdk';
 import { AZURE_CONFIG, validateAzureConfig } from './config';
 import { toast } from 'react-toastify';
 
+
 type OnRecognizedFn = (text: string) => void;
 type OnSpeakerTranslationFn = (translation: string) => void;
 type OnLockSpeaker1LangFn = (lang: string) => void;
@@ -40,6 +41,20 @@ export class TranslationService {
 
   constructor() {
     validateAzureConfig();
+  }
+  public async initRecognition(): Promise<void> {
+    try {
+      const audioConfig = speechsdk.AudioConfig.fromDefaultMicrophoneInput();
+      const dummyRecognizer = new speechsdk.SpeechRecognizer(
+        speechsdk.SpeechConfig.fromSubscription(AZURE_CONFIG.speechKey, AZURE_CONFIG.speechRegion),
+        audioConfig
+      );
+      dummyRecognizer.recognizeOnceAsync(() => {
+        dummyRecognizer.close();
+      });
+    } catch (error) {
+      console.warn('initRecognition failed:', error);
+    }
   }
 
   private showNoLanguageDetectedToast(): void {
