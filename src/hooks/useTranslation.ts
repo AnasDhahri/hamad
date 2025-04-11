@@ -1,3 +1,4 @@
+// useTranslation.ts
 import { useState, useCallback, useRef } from 'react';
 import { TranslationService } from '../services/azure/translationService';
 
@@ -10,6 +11,10 @@ type OnQuotaExceededFn = () => void;
 export const useTranslation = () => {
   const [isTranslating, setIsTranslating] = useState(false);
   const translationServiceRef = useRef(new TranslationService());
+
+  const initRecognition = useCallback(async () => {
+    await translationServiceRef.current.initRecognition();
+  }, []);
 
   const startTranslation = useCallback(
     async (
@@ -48,5 +53,10 @@ export const useTranslation = () => {
     }
   }, [isTranslating]);
 
-  return { isTranslating, startTranslation, stopTranslation };
+  return {
+    isTranslating,
+    startTranslation,
+    stopTranslation,
+    initRecognition
+  };
 };
