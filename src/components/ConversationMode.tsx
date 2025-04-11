@@ -82,10 +82,10 @@ export default function ConversationMode() {
     );
   }, [speaker2Lang, startTranslation, speakTTS, showQuotaExceededToast]);
 
-  const handleStopSpeaker1Mic = useCallback(async () => {
-    await stopTranslation();
+  const handleStopSpeaker1Mic = useCallback(() => {
     setSpeaker1MicActive(false);
     setIsSessionActive(false);
+    stopTranslation(); // Fire and forget for responsiveness
   }, [stopTranslation]);
 
   const handleStartSpeaker2Mic = useCallback(async () => {
@@ -105,10 +105,10 @@ export default function ConversationMode() {
     );
   }, [speaker2Lang, startTranslation, speakTTS, showQuotaExceededToast]);
 
-  const handleStopSpeaker2Mic = useCallback(async () => {
-    await stopTranslation();
+  const handleStopSpeaker2Mic = useCallback(() => {
     setSpeaker2MicActive(false);
     setIsSessionActive(false);
+    stopTranslation(); // Fire and forget for responsiveness
   }, [stopTranslation]);
 
   return (
