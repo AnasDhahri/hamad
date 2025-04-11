@@ -10,34 +10,13 @@ interface MicButtonProps {
 }
 
 const MicButton: React.FC<MicButtonProps> = ({ isActive, isDisabled, onStart, onStop }) => {
-  const handleMouseDown = () => {
-    if (!isDisabled) {
-      onStart();
-    }
-  };
+  const handleClick = () => {
+    if (isDisabled) return;
 
-  const handleMouseUp = () => {
     if (isActive) {
-      onStop();
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (isActive) {
-      onStop();
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling on mobile
-    if (!isDisabled) {
-      onStart();
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (isActive) {
-      onStop();
+      onStop(); // toggle off
+    } else {
+      onStart(); // toggle on
     }
   };
 
@@ -52,11 +31,7 @@ const MicButton: React.FC<MicButtonProps> = ({ isActive, isDisabled, onStart, on
       }`}
       whileHover={{ scale: isDisabled ? 1 : 1.05 }}
       whileTap={{ scale: isDisabled ? 1 : 0.95 }}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      onClick={handleClick}
       disabled={isDisabled}
     >
       {isActive ? (
